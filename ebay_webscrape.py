@@ -47,7 +47,7 @@ print(product_links)
 #Scrapes and store the url, name, and price of the first item result listed on eBay   
 def ebay_scrape(product_links): 
     product_title=[]
-    price_usd=[]
+    price=[]
     condition=[]
     time_sold=[]
     for product_link in product_links:
@@ -63,10 +63,10 @@ def ebay_scrape(product_links):
                 title='None'
             product_title.append(title)
             try:
-                price = soup.find('span',{'class':'notranslate'}).get_text().strip('\n\t\t\t\t\t\t\t\t\t\tUS $')
+                price_sold = soup.find('span',{'class':'notranslate'}).get_text().strip('\n\t\t\t\t\t\t\t\t\t\t')
             except:
                 title='None'
-            price_usd.append(price)
+            price.append(price_sold)
             try:
                 condition_ind=soup.find('div',{'class':'u-flL condText'}).get_text()
             except:
@@ -77,18 +77,18 @@ def ebay_scrape(product_links):
             except:
                 title='None'
             time_sold.append(date)
-    return (product_title,price_usd,condition,time_sold)
+    return (product_title,price,condition,time_sold)
 
-product_title,price_usd,condition,time_sold=ebay_scrape(product_links)           
+product_title,price,condition,time_sold=ebay_scrape(product_links)           
 print(product_title)
-print(price_usd)
+print(price)
 print(condition)
 print(time_sold)
 
 product_dict={}
 product_dict['product_link']=product_links
 product_dict['product_title']=product_title
-product_dict['price_usd']=price_usd
+product_dict['price']=price
 product_dict['condition']=condition
 product_dict['time_sold']=time_sold
 
@@ -97,3 +97,5 @@ print(product_dict)
 product_df=pd.DataFrame.from_dict(product_dict,'columns')
 
 print(product_df)
+
+product_df.to_csv('exploratory data.csv')
