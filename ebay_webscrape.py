@@ -3,10 +3,8 @@ from bs4 import BeautifulSoup
 import requests
 import unicodecsv as csv
 import pandas as pd
-import scrapy
-from scrapy.crawler import CrawlerProcess
-#some more imports
-from crochet import setup
+from datetime import datetime
+from pytz import timezone
       
 #List of the video games to search on ebay
 game_list=["Super Mario World 2 Yoshi's Island Super Nintendo"]
@@ -28,43 +26,44 @@ def make_urls(games):
     return urls
 
 url_list=make_urls(game_list)
-print(urls)
+print(url_list)
 
-setup()
+# get all the game links from the first original search page
+def getLinks(url_list):
+        for url in url_list:
+            # Downloads the eBay page for processing
+            res = requests.get(url)
+            # Raises an exception error if there's an error downloading the website
+            res.raise_for_status()
+            # Creates a BeautifulSoup object for HTML parsing
+            soup = BeautifulSoup(res.text, 'html.parser')
+            product_links=[]
+            h3s=soup.find_all('h3',{'class':'lvtitle'})
+            for h3 in h3s:
+                product_link=h3.a.get("href")
+                product_links.append(product_link)
+            return product_links
 
-def run_spider(spiderName):
-    module_name="first_scrapy.spiders.{}".format(spiderName)
-    scrapy_var = import_module(module_name)   #do some dynamic import of selected spider   
-    spiderObj=scrapy_var.mySpider()           #get mySpider-object from spider module
-    crawler = CrawlerRunner(get_project_settings())   #from Scrapy docs
-    crawler.crawl(spiderObj)    
-# build a web crawler
-# Create the Spider class
-class Your_Spider(scrapy.Spider):
-    name = "your_spider"
-    # start_requests method
-    def start_requests(self):
-        urls = ['https://www.ebay.com/sch/i.html?_from=R40&_nkw=Super+Mario+World+2+Yoshi%27s+Island+Super+Nintendo&_in_kw=1&_ex_kw=&_sacat=0&LH_Sold=1&_udlo=&_udhi=&_samilow=&_samihi=&_sadis=15&_stpos=32308&_sargn=-1%26saslc%3D1&_salic=1&_sop=13&_dmd=1&_ipg=50&LH_Complete=1&_fosrp=1']
-        for url in urls:
-            yield scrapy.Request(url  = url,
-                             callback = self.parse_1)
-    # First parsing method
-    def parse_1(self, response):
-        # locate and extract a list of game links from the original url webpage 
-        game_links = response.xpath('//h3[contains(@class,"lvtitle")]/a/@href')
-        links_to_follow = game_links.extract()
-        for url in links_to_follow:
-            yield response.follow(url = url,
-                                  callback = self.parse_2)
-    # Second parsing method            
-    def parse_2(self, response):
-        product_title = response.xpath('//span[@id="vi-lkhdr-itmTitl"]/text()')
-        product_title = product_title.extract_first().strip()
-        return(product_title)
-        
-process = CrawlerProcess()
-# Tell the process which spider to use
-process.crawl(Your_Spider)
-# Start the crawling process
-process.start()
+#Scrapes and store the url, name, and price of the first item result listed on eBay   
+def ebay_scrape(product_links): 
+    product_title=[]
+    price_us_dollar=[]
+    condition=[]
+    time_sold=[]
+    for product_link in product_links:
+            # Downloads the product page for processing
+            res = requests.get(product_link)
+            # Raises an exception error if there's an error downloading the website
+            res.raise_for_status()
+            # Creates a BeautifulSoup object for HTML parsing
+            soup = BeautifulSoup(res.text, 'html.parser')
+            title = soup.find('span',{'id':'vi-lkhdr-itmTitl'}).get_text()
+            product_title.append(title)
+            price = soup.find('span',{'class':'notranslate'}).get_text().strip('\n\t\t\t\t\t\t\t\t\t\tUS $')
+            price_us_dollar.append(price)
+            condition_ind=soup.find('div',{'class':'u-flL condText'}).get_text()
+            condition.append(condition_ind)
+            date=soup.find('span',{'id':'bb_tlft'}).get_text().replace('\r\n\t\t\t','').replace('\n\n',' ')
+            time_sold.append(date)
+    return (time_sold)
 
