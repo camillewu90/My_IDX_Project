@@ -7,7 +7,7 @@ from datetime import datetime
 from pytz import timezone
       
 #List of the video games to search on ebay
-game_list=["Super Mario World 2 Yoshi's Island Super Nintendo"]
+game_list=["Super Mario World 2 Yoshi's Island Super Nintendo","EarthBound Super Nintendo"]
 
 # create the urls leading to the search page for each game in game_list
 def make_urls(games):
@@ -27,9 +27,9 @@ def make_urls(games):
 
 url_list=make_urls(game_list)
 print(url_list)
-
 # get all the game links from the first original search page
 def getLinks(url_list):
+        product_links=[]
         for url in url_list:
             # Downloads the eBay page for processing
             res = requests.get(url)
@@ -37,17 +37,17 @@ def getLinks(url_list):
             res.raise_for_status()
             # Creates a BeautifulSoup object for HTML parsing
             soup = BeautifulSoup(res.text, 'html.parser')
-            product_links=[]
             h3s=soup.find_all('h3',{'class':'lvtitle'})
             for h3 in h3s:
                 product_link=h3.a.get("href")
                 product_links.append(product_link)
-            return product_links
-
+        return product_links
+product_links=getLinks(url_list)
+print(product_links)
 #Scrapes and store the url, name, and price of the first item result listed on eBay   
 def ebay_scrape(product_links): 
     product_title=[]
-    price_us_dollar=[]
+    price_usd=[]
     condition=[]
     time_sold=[]
     for product_link in product_links:
@@ -57,13 +57,43 @@ def ebay_scrape(product_links):
             res.raise_for_status()
             # Creates a BeautifulSoup object for HTML parsing
             soup = BeautifulSoup(res.text, 'html.parser')
-            title = soup.find('span',{'id':'vi-lkhdr-itmTitl'}).get_text()
+            try:
+                title = soup.find('span',{'id':'vi-lkhdr-itmTitl'}).get_text()
+            except:
+                title='None'
             product_title.append(title)
-            price = soup.find('span',{'class':'notranslate'}).get_text().strip('\n\t\t\t\t\t\t\t\t\t\tUS $')
-            price_us_dollar.append(price)
-            condition_ind=soup.find('div',{'class':'u-flL condText'}).get_text()
+            try:
+                price = soup.find('span',{'class':'notranslate'}).get_text().strip('\n\t\t\t\t\t\t\t\t\t\tUS $')
+            except:
+                title='None'
+            price_usd.append(price)
+            try:
+                condition_ind=soup.find('div',{'class':'u-flL condText'}).get_text()
+            except:
+                title='None'
             condition.append(condition_ind)
-            date=soup.find('span',{'id':'bb_tlft'}).get_text().replace('\r\n\t\t\t','').replace('\n\n',' ')
+            try:
+                date=soup.find('span',{'id':'bb_tlft'}).get_text().replace('\r\n\t\t\t','').replace('\n\n',' ')
+            except:
+                title='None'
             time_sold.append(date)
-    return (time_sold)
+    return (product_title,price_usd,condition,time_sold)
 
+product_title,price_usd,condition,time_sold=ebay_scrape(product_links)           
+print(product_title)
+print(price_usd)
+print(condition)
+print(time_sold)
+
+product_dict={}
+product_dict['product_link']=product_links
+product_dict['product_title']=product_title
+product_dict['price_usd']=price_usd
+product_dict['condition']=condition
+product_dict['time_sold']=time_sold
+
+print(product_dict)
+         
+product_df=pd.DataFrame.from_dict(product_dict,'columns')
+
+print(product_df)
